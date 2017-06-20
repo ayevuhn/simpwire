@@ -103,11 +103,12 @@ int main ()
     catch(spw::OtherError &ex)
     {
       std::cerr << ex.what() << std::endl;
-      exit(4);
+      exit(3);
     }
     catch(...)
     {
       std::cerr << "Error occured. Cause unknown. Terminating." << std::endl;
+      exit(4);
     }
   }
   
