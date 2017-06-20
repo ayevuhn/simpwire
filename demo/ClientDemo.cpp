@@ -111,6 +111,7 @@ int main ()
     catch(...)
     {
       std::cerr << "Error occured. Cause unknown. Terminating." << std::endl;
+      exit(4);
     }
   }
   
