@@ -22,61 +22,47 @@ SOFTWARE.
 
 
 /**
-* @file ClientDemo.cpp
+* @file nodeDemo.cpp
 *
 * Short demonstration that shows how
-* to use the TcpEndpoint class as a
-* client.
+* to use the TcpEndpoint class.
 */
 
 #include <iostream>
-#include "TcpEndpoint.h"
+#include "../src/TcpEndpoint.h"
 
-/**
-* At first this program will try to connect to
-* localhost on port 52200. As soon as a connection
-* is established it will send 10 messages to the
-* server containing "Message 0", "Message 1", 
-* "Message 2" and so on. After each sent message
-* it will try to receive a reply of up to 20 bytes
-* length and display it. 
-* This program will terminate after all 10
-* messages were sent.
-*/
+
 int main ()
 {
-  //Connect to localhost on port 52200
-  spw::TcpEndpoint client("127.0.0.1",52200); 
-  client.setTimeout(3000); //3 seconds timeout
-  client.useTimeout(true); //Use non blocking mode
+  spw::TcpEndpoint node;
+  node.setTimeout(3000); //3 seconds timeout
+  node.useTimeout(true); //Use non blocking mode
   
-  std::cout << "Trying to connect." << std::endl;
+  std::cout << "Trying to connect to 127.0.0.1:52200." << std::endl;
   
   
-  // In this part the client is trying to connect to a server.
+  // In this part the node is trying to connect to a local process that
+  // is listening on port 52200. The easiest way to create a process
+  // like this is to use netcat: 
+  // netcat -l 52200
   
   for(;;)
   {
     try
     {
-      client.connectToHost();
-      std::cout << "Connected to " << client.getPeerIpAddress() 
-                << ":" << client.getPeerPort() << std::endl;
+      node.connectToHost("127.0.0.1", 52200);
+      std::cout << "Connected to " << node.getLatestPeer()->ipAddress()
+                << ":" << node.getLatestPeer()->port() << std::endl;
       break;
     }
-    catch(spw::Timeout &ex)
+    catch(spw::Exception &ex)
     {
-      std::cout << "Not connected yet." << std::endl;
-    }
-    catch(spw::OtherError &ex)
-    {
-      std::cerr << ex.what() << std::endl;
-      exit(1);
-    }
-    catch(...)
-    {
-      std::cerr << "Error occurred. Cause unknown. Terminating." << std::endl;
-      exit(2);
+      std::cout << ex.what() << std::endl;
+      if(!ex.isTimeout())
+      {
+        std::cout << "Terminating..." << std::endl;
+        exit(9);
+      }
     }
   }
   
@@ -88,33 +74,92 @@ int main ()
   {
     try
     {
+      //Send
       std::cout << "Sending: Message " << i << std::endl;
-      client.sendString("Message " + std::to_string(i));
+      node.sendString("Message " + std::to_string(i) +"\n");
+      //Receive
       std::cout << "Receiving..." << std::endl;
-      client.receiveString(received, 20);
+      node.receiveString(received, 20);
       std::cout << "Received: " << received << std::endl;
     }
-    catch(spw::Timeout &ex)
+    catch(spw::Exception &ex)
     {
-      std::cout << "Nothing received yet" << std::endl;
-    }
-    catch(spw::Disconnect &ex)
-    {
-      std::cerr << ex.what() << std::endl;
-      break;
-    }
-    catch(spw::OtherError &ex)
-    {
-      std::cerr << ex.what() << std::endl;
-      exit(3);
-    }
-    catch(...)
-    {
-      std::cerr << "Error occured. Cause unknown. Terminating." << std::endl;
-      exit(4);
+      std::cout << ex.what() << std::endl;
+      if(ex.isDisconnect())
+      {
+       std::cout << "Moving on..." << std::endl;
+       break;
+      }
+      else if(!ex.isTimeout())
+      {
+        std::cout << "Terminating..." << std::endl;
+        exit(9);
+      }
     }
   }
   
+  if(node.peersAvailable())
+  {
+    std::cout << "Disconnecting " << node.getLatestPeer()->ipAddress()
+    << ":" << node.getLatestPeer()->port() << std::endl;
+    node.disconnectPeer();
+  }
+
+  // In this part the node will wait for an incoming connection.
+  // Again netcat can be used: 
+  // netcat 127.0.0.1 45123
+  std::cout << "Listening on port 45123..." << std::endl;
+
+  node.setListenPort(45123);
+  for(;;)
+  {
+    try
+    {
+      node.waitForConnection();
+      std::cout << "Connected to " << node.getLatestPeer()->ipAddress()
+                << ":" << node.getLatestPeer()->port() << std::endl;
+      break;
+    }
+    catch(spw::Exception &ex)
+    {
+      std::cout << ex.what() << std::endl;
+      if(!ex.isTimeout())
+      {
+        std::cout << "Terminating." << std::endl;
+        exit(4);
+      }
+    }
+  }
+
+  // Connection is established. Communication takes places in this part
+
+  for(int i = 0; i < 10; ++i)
+  {
+    try
+    {
+      //Send
+      std::cout << "Sending: Message " << i << std::endl;
+      node.sendString("Message " + std::to_string(i) +"\n");
+      //Receive
+      std::cout << "Receiving..." << std::endl;
+      node.receiveString(received, 20);
+      std::cout << "Received: " << received << std::endl;
+    }
+    catch(spw::Exception &ex)
+    {
+      std::cout << ex.what() << std::endl;
+      if(ex.isDisconnect())
+      {
+        break;
+      }
+      else if(!ex.isTimeout())
+      {
+        std::cout << "Terminating..." << std::endl;
+        exit(9);
+      }
+    }
+  }
+
   std::cout << "Done" << std::endl;
   
   return 0;

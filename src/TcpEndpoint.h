@@ -44,11 +44,11 @@ SOFTWARE.
 #include <chrono>
 #include <thread>
 #include <ctime>
+#include "Peer.h"
 #include "Exceptions.h"
 
 #define DEFAULT_TIMEOUT 2000
-#define DEFAULT_PORT 65432
-#define DEFAULT_BACKLOG 1//Only one connection allowed
+#define DEFAULT_BACKLOG 20
 #define TIMESLICE 100 //Milliseconds between connect attempts
 
 namespace spw
@@ -59,22 +59,21 @@ namespace spw
  * @brief Simple network communication over TCP.
  *
  * With TcpEndpoint you can easily establish
- * a TCP connection to any TCP host or wait for
- * another TCP client to connect to your
- * application. Two connected TcpEndpoints
- * can then exchange any amount of data
- * for as long as they want before
- * closing the connection.
+ * multiple TCP connections to any hosts 
+ * and also accept multiple incoming TCP connections
+ * from other clients while still maintaining the
+ * previously made connection. While connected to
+ * one or multiple peers TcpEndpoint
+ * can exchange any amount of data with them
+ * for as long as desired.
  *
  * Note that currently TcpEndpoint does not
- * support communication with several clients
- * when used as a TCP server. It is only suitable
- * for 1 to 1 communication (this might change
- * in the future).
+ * support asynchronous listen, connect, read
+ * or write calls. 
  *
  * The goal of TcpEndpoint is to provide a
  * simple module that helps the user establish
- * a basic network connection without the need
+ * basic network connections without the need
  * to fumble around with the low level UNIX socket
  * routines as it does this for the user.
  *
@@ -84,9 +83,10 @@ class TcpEndpoint
 public:
 
   TcpEndpoint();
+  /**
+   * @param[in] port: Listen port number.
+   */
   TcpEndpoint(uint16_t port);
-  TcpEndpoint(const std::string &host_or_ip,
-              uint16_t port);
   virtual ~TcpEndpoint();
 
   /**
@@ -100,35 +100,20 @@ public:
   }
 
   /**
-   * Sets the port number the TcpEnpoint
-   * will connect to if is a client or
-   * to which port it will be bound if
-   * it is a server.
-   * @param[in] port:
-   *    Number of the port
+   * Specifiy on which port to listen for
+   * incoming connections.
+   * @param[in] port: Listen port number.
    */
-  virtual void setPortNumber(uint16_t port)
+  virtual void setListenPort(uint16_t port)
   {
     portnumber = port;
   }
 
-  /**
-   * Sets the IP adress or URL of the host
-   * TcpEndpoint will connect to.
-   * This is only relevant when TcpEndpoint is
-   * a client.
-   * @param[in] host_or_ip:
-   *    Host IP address or host URL
-   *
-   */
-  virtual void setHost(const std::string &host_or_ip)
-  {
-    hostname_or_ip = host_or_ip;
-  }
 
   /**
    * Sets the amount of time TcpEndpoint
-   * will wait for an operation to complete.
+   * will wait for a connect, listen, read or
+   * write call to complete.
    * @param[in] millisecs: Timeout in milliseconds
    */
   virtual void setTimeout(uint32_t millisecs)
@@ -140,7 +125,8 @@ public:
    * With this function you can tell
    * TcpEndpoint whether you want to
    * use the timeout. If not then
-   * operations can block forever
+   * connect, listen, read or write calls
+   * can block forever
    * (that means infinite timeout).
    * @param[in] use_timeout:
    *    If true then timeout will be used
@@ -154,8 +140,6 @@ public:
    * Check whether TcpEndpoint is using IPv6.
    * @return
    *   Is using IPv6?
-   *
-   *
    */
   virtual bool isIpV6() { return use_ip_v6; }
 
@@ -166,13 +150,6 @@ public:
    */
   virtual uint16_t portNumber() { return portnumber; }
 
-  /**
-   * Returns the name or the IP address of the remote
-   * host. Only meaningful when TcpEndpoint is a client.
-   * @return
-   *   Name or IP address
-   */
-  virtual std::string host() { return hostname_or_ip; }
 
   /**
    * See timeout setting.
@@ -188,119 +165,128 @@ public:
    */
   virtual bool usingTimeout() { return timeout_used; }
 
-  /**
-   * Check whether TcpEndpoint is a server.
-   * @return
-   *   Is server?
-   */
-  virtual bool isServer() { return is_server; }
-
-  /**
-   * Check whether TcpEndpoint is connected
-   * to peer.
-   * @return
-   *   Is connected?
-   *
-   */
-  virtual bool isConnected() { return connected; }
 
   /**
    * Waits for an incoming connection.
-   * Calling this while being connected will
-   * terminate the current connection.
-   * It will also make this object a server.
+   * This function will add a new Peer object
+   * to peers if successful.
    * If timeout is not used then this
    * function may block forever.
-   *
    */
   virtual void waitForConnection();
 
   /**
    * Tries to connect to a host.
-   * Calling this while being connected will
-   * terminate the current connection.
+   * This function will add a new Peer object
+   * to to peers if successful.
    * If timeout is not used then this
    * function may block forever.
-   *
    */
-  virtual void connectToHost();
+  virtual void connectToHost(const std::string &hostip,
+                             uint16_t hostport);
 
   /**
-   * Closes comm_socket_fd to
-   * disconnect from peer.
+   * Get all peers currently connected.
+   * @return Peer Vector
+  */
+  virtual std::vector<const Peer*> getPeers() const;
+
+  /**
+   * Check whether there are any peers connected.
+   * @return Peers available?
+  */
+  virtual bool peersAvailable() { return !peers.empty(); }
+
+  /**
+   * Get the latest Peer that connected or that
+   * was connected to (last element in vector peers).
+   * @return Last elment in vector peers
+  */
+  virtual const Peer* getLatestPeer() const;
+
+  /**
+   * Disconnect one specific Peer.
+   * If no Peer is specified the latest Peer
+   * will be disconnected (last element in vector
+   * peers).
+   * @param[in] pr Peer to disconnect.
    */
-  virtual void disconnect();
+  virtual void disconnectPeer(Peer *pr = NULL);
+
+  /**
+   * Disconnect all Peers (vector peers
+   * will be emptied).
+  */
+  virtual void disconnectAll();
 
   /**
    * Sends bytes to the peer.
    * @param[in] data : The bytes that will be sent.
    * @param[in] length: The length of data.
+   * @param[in] pr: The peer the data is sent to.
    * @return How many bytes were actually sent
-   *
    */
   virtual int32_t sendBytes(const char *data,
-                            int32_t length);
+                            int32_t length,
+                            const Peer *pr = NULL);
   /**
    * Simplifies sending bytes to the peer
    * by using a std::vector<char>.
    * @param[in] data: Bytes to be sent.
+   * @param[in] pr: The peer the data is sent to.
    * @return How many bytes actually were sent.
-   *
    */
-  virtual int32_t sendBytes(const std::vector<char> &data);
+  virtual int32_t sendBytes(const std::vector<char> &data,
+                            const Peer *pr = NULL);
 
   /**
    * Simplifies sending a std::string to the peer.
    * @param[in] data: String to be sent.
+   * @param[in] pr: The peer the string is sent to.
    * @return How many characters were sent.
    */
-  virtual int32_t sendString(const std::string &data);
+  virtual int32_t sendString(const std::string &data,
+                            const Peer *pr = NULL);
 
   /**
    * Waits for the peer to send bytes.
    * @param[out] buffer: The storage for the received bytes.
    * @param[in] length: How many bytes are to be received
    *                   (should not exceed size of buffer).
+   * @param[in] pr: The peer data is received from.
    * @return How many bytes actually were received.
    */
   virtual int32_t receiveBytes(char *buffer,
-                               int32_t length);
+                               int32_t length,
+                               Peer *pr = NULL);
 
   /**
    * Simplifies receiving bytes from the peer by
    * using a std::vector<char>.
    * @param[out] buffer: Storage for the received bytes.
    * @param[in] length: How many bytes are to be received.
+   * @param[in] pr: The peer data is received from.
    * @return How many bytes actually were received.
    */
   virtual int32_t receiveBytes(std::vector<char> &buffer,
-                               int32_t length);
+                               int32_t length,
+                               Peer *pr = NULL);
   /**
    * Simplifies receiving a string from the peer.
    * @param[out] buffer: Storage for received string.
    * @param[in] length: How long the string should be.
+   * @param[in] pr: The peer the string is received from.
    * @return How many characters were received.
    */
   virtual int32_t receiveString(std::string &buffer,
-                                int32_t length);
-  /**
-   * Shows IP address of the connected peer.
-   * @return The IP address
-   */
-  virtual std::string getPeerIpAddress();
-
-  /**
-   * Shows the TCP port of the connected peer.
-   * @return The port number.
-   */
-  virtual uint16_t getPeerPort();
+                                int32_t length,
+                                Peer *pr = NULL);
 
   /**
    * Shows IP of this machine.
    * @return The IP address
    */
   virtual std::string getOwnIpAddress();
-
 
 protected:
 
@@ -323,41 +309,53 @@ protected:
                               bool nonblocking);
 
 
+  /**
+   * Checks whether the provided Peer pointer does
+   * actually point to a peer inside the peers
+   * vector.
+   */
+  virtual bool peerIsInVector(const Peer *pr);
+
+
+  /**
+   * Helper function to get a human readable string 
+   * of the peer connected to the specified socket.
+   * @param[in] sockfd Socket connected to peer.
+   */
+  virtual std::string getPeerIpAddress(int sockfd);
+
+
+  /**
+   * Helper function to get the port the peer is using.
+   * @param[in] addrstorage sockaddr_storage containing
+   *   peer information.
+   */
+  virtual uint16_t getPeerPort(const sockaddr_storage &addrstorage);
+
+
+
 private:
 
-  bool is_server;
-  bool connected;
   bool use_ip_v6;
   bool timeout_used;
   uint32_t timeout_ms;
 
-  std::string hostname_or_ip;
   uint16_t portnumber;
 
   /**
    * Socket that is used to
-   * listen for connections
-   * when this object is a
-   * server. This socket
-   * is not needed when
-   * object is in client mode.
+   * listen for connections.
    */
   int listen_socket_fd;
 
-  /**
-   * Socket that is used for
-   * communicating with a
-   * peer.
-   */
-  int comm_socket_fd;
 
   /**
-   * Adress of peer that is obtained
-   * when the peer connects to
-   * listen_socket_fd.
-   * Used only when this is a server.
+   * Contains all the peers as Peer
+   * object which are currently 
+   * connected to this object.
    */
-  sockaddr_storage remote_addr;
+  std::vector<Peer> peers;
+
 
   /**
    * For large amounts of data (several hundreds of kilobytes)
@@ -405,7 +403,6 @@ private:
    */
   bool receiveAllPossible(int s, char* buf,
                          int32_t *len, bool blocking);
-
 
 };
 

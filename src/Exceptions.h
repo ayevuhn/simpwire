@@ -23,11 +23,7 @@ SOFTWARE.
 /*
  * @file Exceptions.h
  *
- * Contains the classes Timeout, Disconnect,
- * NoConnection and Other error which are
- * all derived from runtime_error. They are
- * thrown by some functions of the class
- * TcpEndpoint.
+ * Contains the class Exception.
  */
 
 #ifndef EXCEPTIONS_H_
@@ -35,128 +31,101 @@ SOFTWARE.
 
 #include <stdexcept>
 #include <cstring>
-
+#include <map>
 
 namespace spw
 {
 
-static const int UNKNOWN_ERROR = -522;
-static const char *UNKNOWN_ERROR_STR = "Unknown Error";
-
-/**
- * @class Timeout
- *
- * Thrown when timeout occurs.
- */
-class Timeout : public std::runtime_error
+  /**
+   * @class Exception
+   * 
+   * Exception is derived from runtime_error. It can be
+   * thrown by the follwoing functions of the class
+   * TcpEndpoint:
+   * - waitForConnection()
+   * - connectToHost()
+   * - sendBytes()
+   * - sendString()
+   * - receiveString()
+   * - receiveBytes()
+   * - getOwnIpAddress()
+  */
+class Exception : public std::runtime_error
 {
 public:
 
-  Timeout(const std::string &message) :
-    runtime_error(message)
-  { }
-
-};
-
-/**
- * @class Disconnect
- *
- * Thrown when peer disconnects during
- * communication.
- */
-class Disconnect : public std::runtime_error
-{
-public:
-
-  Disconnect(const std::string &message) :
-    runtime_error(message)
-  { }
-
-};
-
-
-/**
- * @class NoConnection
- *
- * Thrown when calling a function that needs
- * a connection before a connection was
- * established (e. g. sendBytes()).
- */
-class NoConnection : public std::runtime_error
-{
-public:
-
-  NoConnection(const std::string &message) :
-    runtime_error(message)
-  { }
-};
-
-/**
- * @class OtherError
- *
- * Thrown when some other error occurs. OtherError
- * tries to get the current error from
- * the errno variable. If errno does not
- * indicate any error OtherError will
- * contain the Message specified in the
- * const string UNKNOWN_ERROR_STR.
- */
-class OtherError : public std::runtime_error
-{
-public:
-
-  OtherError() :
+  enum Reason {TIMEOUT, DISCONNECT,
+               NO_PEERS, PEER_NONEXISTANT,
+               OTHER};
+  
+  //This constructor lets the user specify the
+  //Reason and the message string. If no message
+  //is specified it will use a standard message.
+  //Also if the user choses the Reason to be OTHER
+  //and doesn't provide any message string this
+  //constructor will check whether an error number
+  //from errno.h is set and if so use it's message
+  //string.
+  Exception(Reason r,
+            const std::string &message = "") :
     runtime_error(""),
-    m_errnum(0), m_errstring(NULL)
+    reason_for_error(r),
+    linux_errno(0),
+    what_message(message)
   {
-    checkError();
+    if(message.empty())
+    {
+      what_message = reason_strings[(int)r];
+      if(r == OTHER) checkIfLinuxError();
+    }
   }
 
-  int getErrno() const { return m_errnum; }
+  Reason reason() { return reason_for_error; }
+
+  //isTimeout() and isDisconnect() are just more convenient
+  //ways to check whether the reason for the
+  //function was a timeout or a disconnect. Timeouts
+  //and disconnects happen very often and therefore need to
+  //be handled all the time.
+  bool isTimeout() { return reason_for_error == TIMEOUT; } 
+  bool isDisconnect() { return reason_for_error == DISCONNECT; }
+
+  
+  bool isLinuxError() const { return linux_errno != 0; }
+
+  int linuxErrno() const { return linux_errno; }
 
   //@override
-  const char* what() const noexcept
-  {
-    return m_errstring;
-  }
-
-  ~OtherError()
-  {
-    delete[] m_errstring;
-  }
+  const char* what() const noexcept { return what_message.c_str(); }
 
 private:
 
-  /// See whether errno is set.
-  void checkError()
+  static const size_t reason_count = 5;
+
+  //The standard message strings associated with the
+  //Reason enum.
+  const std::string reason_strings[reason_count] = {
+      "Timed out.", "Peer disconnected.",
+      "No peers available.", "Peer does not exist.",
+      "Unknown error."
+  };
+
+  //Check whether a linux error number from
+  //errno.h is set. If it is then this function
+  //modifies the Exception object to contain
+  //the error number and error string.
+  void checkIfLinuxError()
   {
-
-    const char *pstr = NULL;
-    size_t strbuffsize = 0;
-
-
     if(errno != 0)
-    { // errno is set, determine buffer size
-      // for error string from strerror()
-      m_errnum = errno;
-      pstr = strerror(errno);
-      strbuffsize = strlen(pstr) + 1;
+    {
+      linux_errno = errno;
+      what_message = std::string(strerror(errno));
     }
-    else
-    { // errno is not set, determine buffer size
-      // for the UNKNOWN_ERROR string
-      m_errnum = UNKNOWN_ERROR;
-      pstr = UNKNOWN_ERROR_STR;
-      strbuffsize = strlen(UNKNOWN_ERROR_STR) + 1;
-    }
-    // Allocate space for error string and
-    // copy into m_errstring.
-    m_errstring = new char[strbuffsize];
-    strcpy(m_errstring, pstr);
   }
 
-  int m_errnum;
-  char* m_errstring;
+  Reason reason_for_error;
+  int linux_errno;
+  std::string what_message;
 
 };
 
