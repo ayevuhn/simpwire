@@ -20,26 +20,15 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-/**
- * @file Peer.cpp
- * Contains implementation of class Peer.
-*/
+/*
+ * @file simpwire.hpp
+ *
+ * This header is meant to be included by
+ * application code using simpwire.
+ */
+#ifndef _SIMPWIRE_HPP_
+#define _SIMPWIRE_HPP_
 
-#include "../include/Peer.hpp"
+#include "TcpNode.hpp"
 
-namespace spw
-{
-
-  Peer::Peer(uint64_t conn_id, int socket, const std::string &ip, uint16_t port) :
-      connection_id(conn_id),socket_fd(socket),
-      ip_address(ip), port_number(port)
-  {
-
-  }
-  
-  //Will construct a Peer which evaluates to false.
-  Peer::Peer() : Peer(0,-1,"",0) {}
-
-}
-
-
+#endif //_SIMPWIRE_HPP_

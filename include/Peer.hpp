@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2017 ayevuhn
+Copyright (c) 2017 Ivan Brebric
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the "Software"),
@@ -38,44 +38,74 @@ namespace spw
 
 /**
  * @class Peer
- * @brief Holds all information about a connected peer.
+ * @brief Holds all information about a connected peers.
  * 
- * Objects of the class TcpEndpoint can have multiple
- * connections at the same time. They use a vector
- * of Peer objects to store the information of all
- * the currently connected peers.
+ * Objects of the class TcpNode  
+ * can have multiple connections at the same time. 
+ * They use a vector of Peer objects to store 
+ * the information of all the currently connected peers.
  * 
  * Each Peer object contains:
- * - A unique id
+ * - A connection id
  * - The socket file discriptor which is used
  *   to send or receive data from the peer.
  * - The ip address of the peer.
  * - The port number the peer is using.
+ * 
+ * A Peer object can convert to bool. So
+ * it can be used in a conditional:
+ * Peer pr;
+ * if(pr)
+ * { ... }
+ * Peer objects evaluate to false when
+ * their socket_fd is -1, 
+ * their ip_address is an empty string
+ * and their port number is zero.
+ * That applies to all Peer constructed
+ * whithout parameters. Those "null Peers"
+ * are useful as return value if you
+ * want to indicate that no Peers 
+ * were found by a function that returns
+ * Peer objects like getPeer() or similar.
 */
 class Peer
 {
 public:
 
-  Peer(int socket, const std::string &ip, uint16_t port);
-  Peer(const std::string &ip, uint16_t port);
+  Peer(uint64_t conn_id, int socket, const std::string &ip, uint16_t port);
+  Peer();
+  
   virtual ~Peer() {}
 
-  virtual uint64_t id() const { return unique_id; }
+  virtual uint64_t id() const { return connection_id; }
   virtual int socket() const { return socket_fd; }
   virtual std::string ipAddress() const { return ip_address; }
   virtual uint16_t port() const { return port_number; }
+
+  bool operator==(const Peer &other) const
+  {
+    return socket_fd == other.socket_fd &&
+           ip_address == other.ip_address &&
+           port_number == other.port_number;
+
+  }
+
+  explicit operator bool() const 
+  {
+    return socket_fd != -1 &&
+           !ip_address.empty() &&
+           port_number != 0;
+  }
 
 
 protected:
 
 private:
 
-  uint64_t unique_id;
+  uint64_t connection_id;
   int socket_fd;
   std::string ip_address;
   uint16_t port_number;
-
-  static uint64_t unique_id_counter;
 
 };
 

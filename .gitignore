@@ -1,0 +1,7 @@
+demo_build/*.o
+demo_build/simpwire_demo
+demo_build/simpwire_demo_async
+build/*.o
+build/*.so
+build/*.so.*
+build/\.0

@@ -2,7 +2,7 @@
 		"version": "0.2.0",
 		"configurations": [
 			{
-				"name": "(gdb) Launch",
+				"name": "(gdb) Launch demo",
 				"type": "cppdbg",
 				"request": "launch",
 				"program": "${workspaceRoot}/demo_build/simpwire_demo",

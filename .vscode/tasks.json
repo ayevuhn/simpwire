@@ -6,7 +6,7 @@
 
   "tasks": [
     {
-        "taskName": "Build Demo",
+        "label": "Build Demo",
         "type": "shell",
         "command": "cd demo_build && make",
         "group":"build",
@@ -18,7 +18,7 @@
         },
         "problemMatcher": {
             "owner": "cpp",
-            "fileLocation": ["relative", "${workspaceRoot}"],
+            "fileLocation": ["relative", "${workspaceRoot}/simpwire"],
             "pattern": {
                 "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
                 "file": 1,
@@ -28,6 +28,55 @@
                 "message": 5
             }
         }
-    }
+    },
+    {
+        "label": "Build Library",
+        "type": "shell",
+        "command": "cd build && make",
+        "group":"build",
+        "presentation": {
+            "echo": true,
+            "reveal": "always",
+            "focus": false,
+            "panel": "shared"
+        },
+        "problemMatcher": {
+            "owner": "cpp",
+            "fileLocation": ["relative", "${workspaceRoot}/simpwire"],
+            "pattern": {
+                "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+                "file": 1,
+                "line": 2,
+                "column": 3,
+                "severity": 4,
+                "message": 5
+            }
+        }
+    },
+    {
+        "label": "Run Demo",
+        "type": "shell",
+        "command": "export LD_LIBRARY_PATH=${workspaceRoot}/build && ${workspaceRoot}/demo_build/simpwire_demo",
+        "group":"none",
+        "presentation": {
+            "echo": true,
+            "reveal": "always",
+            "focus": false,
+            "panel": "shared"
+        },
+        "problemMatcher": {
+            "owner": "cpp",
+            "fileLocation": ["relative", "${workspaceRoot}/simpwire"],
+            "pattern": {
+                "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+                "file": 1,
+                "line": 2,
+                "column": 3,
+                "severity": 4,
+                "message": 5
+            }
+        }
+    },
+
 ]
 }

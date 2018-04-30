@@ -2,25 +2,24 @@
 
 CXX := g++
 CXXFLAGS := -std=c++11 -c -g -Wall 
-LDFLAGS := -g
+LDFLAGS:= -g -Wall -pthread 
+LIBS := -L../build -lsimpwire
 TARGET := simpwire_demo
 
-objs := TcpEndpoint.o Peer.o demo.o
-
+objs := demo.o
 
 all: $(TARGET)
 
 $(TARGET): $(objs)
-	$(CXX) $(LDFLAGS) -o $@ $^
+	cd ../build && make
+	$(CXX) $(LDFLAGS) -o $@ $^ $(LIBS)
 
-demo.o: ../demo/demo.cpp ../src/TcpEndpoint.h
-	$(CXX) $(CXXFLAGS) $<
 
-TcpEndpoint.o: ../src/TcpEndpoint.cpp ../src/TcpEndpoint.h ../src/Peer.h ../src/Exceptions.h
-	$(CXX) $(CXXFLAGS) $<
-
-Peer.o: ../src/Peer.cpp ../src/Peer.h
+demo.o : ../demo/demo.cpp 
 	$(CXX) $(CXXFLAGS) $<
 
 clean:
-	rm -f $(objs)
+	rm -f $(objs) 
+
+clear:
+	rm -f $(objs) $(TARGET)
