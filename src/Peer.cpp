@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2017 Ivan Brebric
+Copyright (c) 2019 Ivan Brebric
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the "Software"),
@@ -26,20 +26,129 @@ SOFTWARE.
 */
 
 #include "../include/Peer.hpp"
+#include "PeerPrivate.hpp"
 
 namespace spw
 {
 
-  Peer::Peer(uint64_t conn_id, int socket, const std::string &ip, uint16_t port) :
-      connection_id(conn_id),socket_fd(socket),
-      ip_address(ip), port_number(port)
-  {
-
-  }
-  
-  //Will construct a Peer which evaluates to false.
-  Peer::Peer() : Peer(0,-1,"",0) {}
+Peer::Peer() : m_private(new PeerPrivate())
+{
 
 }
 
+Peer::Peer(const Peer &other)
+{
+    delete m_private;
+    m_private = new PeerPrivate();
+    *m_private = *other.m_private;
+}
 
+Peer& Peer::operator=(const Peer &other)
+{
+    delete m_private;
+    m_private = new PeerPrivate();
+    *m_private = *other.m_private;
+    return *this;
+}
+
+Peer::Peer(Peer&& other) : m_private(nullptr)
+{
+    m_private = other.m_private;
+    other.m_private = nullptr;
+}
+
+
+Peer::~Peer()
+{
+    if(m_private)
+    {
+        delete m_private;
+        m_private = nullptr;
+    }
+}
+
+uint64_t Peer::id() const
+{
+    if(m_private)
+    {
+        return m_private->id();
+    }
+    else
+    {
+        return 0;
+    }
+}
+
+std::string Peer::ipAddress() const
+{
+    if(m_private)
+    {
+        return m_private->ipAddress();
+    }
+    else
+    {
+        return "";
+    }
+}
+
+uint16_t Peer::port() const
+{
+    if(m_private)
+    {
+        return m_private->port();
+    }
+    else
+    {
+        return 0;
+    }
+}
+
+std::string Peer::hostName() const
+{
+    if(m_private)
+    {
+        return m_private->hostName();
+    }
+    else
+    {
+        return "";
+    }
+}
+
+bool Peer::isValid() const
+{
+    if(m_private)
+    {
+        return m_private->isValid();
+    }
+    else
+    {
+        return false;
+    }
+}
+
+bool Peer::operator==(const Peer &other) const
+{
+    if(m_private && other.m_private)
+    {
+        return m_private->operator==(*other.m_private);
+    }
+    else
+    {
+        return false;
+    }
+}
+
+Peer::operator bool() const
+{
+    if(m_private)
+    {
+        return m_private->operator bool();
+    }
+    else
+    {
+        return false;
+    }
+}
+
+}

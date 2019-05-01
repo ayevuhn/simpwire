@@ -20,15 +20,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-/*
- * @file simpwire.hpp
- *
- * This header is meant to be included by
- * application code using simpwire.
- */
-#ifndef SIMPWIRE_HPP_
-#define SIMPWIRE_HPP_
+#include "gtest/gtest.h"
 
-#include "TcpNode.hpp"
-
-#endif //SIMPWIRE_HPP_
+TEST(gtest, gtestDoesCompileAndWork)
+{
+  ASSERT_TRUE(true) << "Googletest works!";
+}

@@ -19,16 +19,53 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
+#ifndef SPW_COMMON_HPP_
+#define SPW_COMMON_HPP_
 
-/*
- * @file simpwire.hpp
- *
- * This header is meant to be included by
- * application code using simpwire.
- */
-#ifndef SIMPWIRE_HPP_
-#define SIMPWIRE_HPP_
+#include <unordered_map>
+#include <string>
 
-#include "TcpNode.hpp"
+//Windows specific DLL import/export markers
+#ifdef _WIN32
 
-#endif //SIMPWIRE_HPP_
+#ifdef BUILDING_DLL
+#define DLL_IMPORT_EXPORT __declspec(dllexport)
+#else
+#define DLL_IMPORT_EXPORT __declspec(dllimport)
+#endif
+
+#endif //_WIN32
+
+namespace spw
+{
+/**
+ * @struct Message
+ * Message objects are used by TcpNode
+ * to deliver error messages.
+*/
+struct Message
+{
+    std::string head;
+    std::string body;
+};
+
+enum class IpVersion {ANY, IPV4, IPV6};
+
+const std::string g_version_string = "1.0.0";
+
+/**
+ * Look up version that is currently used
+ * @return String that represents the version.
+*/
+#ifdef _WIN32
+inline std::string DLL_IMPORT_EXPORT version() 
+#else
+inline std::string version()
+#endif
+{
+    return g_version_string;
+}
+
+}
+
+#endif // SPW_COMMON_HPP_
