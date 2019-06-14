@@ -51,7 +51,7 @@ struct Message
 
 enum class IpVersion {ANY, IPV4, IPV6};
 
-const std::string g_version_string = "1.0.0";
+const std::string g_version_string = "1.0.1";
 
 /**
  * Look up version that is currently used

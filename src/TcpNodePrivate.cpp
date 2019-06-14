@@ -147,81 +147,81 @@ uint16_t TcpNodePrivate::listenPort()
 
 PeerList TcpNodePrivate::allPeers()
 {
-    Lock(m_data_access);
+    Lock lck(m_data_access);
     return m_peers;
 }
 
 void TcpNodePrivate::onStartedListening(std::function<void(uint16_t)> callback)
 {
-    Lock(m_callback_access);
+    Lock lck(m_callback_access);
     m_callbackStartedListening = callback;
 }
 
 void TcpNodePrivate::onStoppedListening(std::function<void()> callback)
 {
-    Lock(m_callback_access);
+    Lock lck(m_callback_access);
     m_callbackStoppedListening = callback;
 }
 
 void TcpNodePrivate::onAccept(std::function<void(Peer pr)> callback)
 {
-    Lock(m_callback_access);
+    Lock lck(m_callback_access);
     m_callbackNewPeerConnected = callback;
 }
 
 void TcpNodePrivate::onReceive(
     std::function<void(Peer pr, std::vector<uint8_t> bytes)> callback)
 {
-    Lock(m_callback_access);
+    Lock lck(m_callback_access);
     m_callbackReceived = callback;
 }
 
 void TcpNodePrivate::onDisconnect(std::function<void(Peer pr)> callback)
 {
-    Lock(m_callback_access);
+    Lock lck(m_callback_access);
     m_callbackPeerDisconnected = callback;
 }
 
 void TcpNodePrivate::onClosedConnection(std::function<void(Peer pr)> callback)
 {
-    Lock(m_callback_access);
+    Lock lck(m_callback_access);
     m_callbackClosedConnection = callback;
 }
 
 void TcpNodePrivate::onConnect(std::function<void(Peer pr)> callback)
 {
-    Lock(m_callback_access);
+    Lock lck(m_callback_access);
     m_callbackConnectedToNewPeer = callback;
 }
 
 void TcpNodePrivate::onSend(std::function<void(Peer pr, size_t amount)> callback)
 {
-    Lock(m_callback_access);
+    Lock lck(m_callback_access);
     m_callbackSent = callback;
 }
 
 void TcpNodePrivate::onListenError(std::function<void (Message msg)> callback)
 {
-    Lock(m_callback_access);
+    Lock lck(m_callback_access);
     m_callbackListenError = callback;
 }
 
 void TcpNodePrivate::onSendError(std::function<void (Message msg)> callback)
 {
-    Lock(m_callback_access);
+    Lock lck(m_callback_access);
     m_callbackSendError = callback;
 }
 
 void TcpNodePrivate::onConnectError(std::function<void (Message msg)> callback)
 {
-    Lock(m_callback_access);
+    Lock lck(m_callback_access);
     m_callbackConnectError = callback;
 }
 
 void TcpNodePrivate::onFaultyConnectionClosed(
     std::function<void(Peer pr, Message err)> callback)
 {
-    Lock(m_callback_access);
+    Lock lck(m_callback_access);
     m_callbackFaultyConnectionClosed = callback;
 }
 
@@ -270,7 +270,7 @@ void TcpNodePrivate::sendData(const Peer &pr, const std::vector<uint8_t> &dat)
     }
     else
     {
-        Lock(m_callback_access);
+        Lock lck(m_callback_access);
         if(m_callbackSendError) m_callbackSendError(
             _createErrorMessage(
                 "Send Error", "Cannot send. Not connected to" + pr.ipAddress() + 
@@ -290,7 +290,7 @@ void TcpNodePrivate::_listenThreadJob()
 
             if(!m_listener->listen(m_portnumber, m_ip_version))
             {
-                Lock(m_callback_access);
+                Lock lck(m_callback_access);
                 if(m_callbackListenError)
                 {
                     Message errmsg =    _createErrorMessage(
@@ -310,7 +310,7 @@ void TcpNodePrivate::_listenThreadJob()
             {
                 m_listener_available = true;
                 
-                Lock(m_callback_access);
+                Lock lck(m_callback_access);
                 if(m_callbackStartedListening)
                 { 
                     uint16_t portnum = m_listener->listenPort();
@@ -328,7 +328,7 @@ void TcpNodePrivate::_listenThreadJob()
             m_listener->close();
             m_listener_available = false;
 
-            Lock(m_callback_access);
+            Lock lck2(m_callback_access);
             if(m_callbackStoppedListening)
             {
                 lck.unlock();
@@ -369,7 +369,7 @@ void TcpNodePrivate::_listenThreadJob()
                 np.m_private->setValid(true);
                 m_peers.insert({current_count, np});
                 
-                Lock(m_callback_access);
+                Lock lck(m_callback_access);
                 if(m_callbackNewPeerConnected)
                 { 
                     lck.unlock();
@@ -379,7 +379,7 @@ void TcpNodePrivate::_listenThreadJob()
             }
             else if(m_listener->getLastErrno() != 0)
             {
-                Lock(m_callback_access);
+                Lock lck(m_callback_access);
                 if(m_callbackListenError)
                 {
                     Message errmsg = _createErrorMessage(
@@ -412,7 +412,7 @@ void TcpNodePrivate::_listenThreadJob()
                 }
             }
             
-            Lock(m_callback_access);
+            Lock lck(m_callback_access);
 
             switch(recres)
             {
@@ -469,7 +469,7 @@ void TcpNodePrivate::_listenThreadJob()
                 s.second.m_private->destroySocket();
                 m_peers.erase(s.first);
 
-                Lock(m_callback_access);
+                Lock lck(m_callback_access);
 
                 if(temp.m_private->disconnectType() == 
                      DisconnectType::PEER_DISCONNECTED_THEMSELF &&
@@ -509,7 +509,7 @@ void TcpNodePrivate::_startListenThreadIfNotRunning()
     if(!m_listen_thread_running)
     {
         m_listen_thread_running = true;
-        Lock(m_data_access);
+        Lock lck(m_data_access);
         m_listenThread = 
         std::thread(&TcpNodePrivate::_listenThreadJob, this);
     }
@@ -561,7 +561,7 @@ void TcpNodePrivate::_connectThreadJob()
 
             if(!connect_success)
             {
-                Lock(m_callback_access);
+                Lock lck(m_callback_access);
                 if(m_callbackConnectError)
                 {
                     m_callbackConnectError(
@@ -590,7 +590,7 @@ void TcpNodePrivate::_connectThreadJob()
                 m_peers.insert({current_count, pr});
                 lck.unlock();
 
-                Lock(m_callback_access);
+                Lock lck(m_callback_access);
                 if(m_callbackConnectedToNewPeer)
                 {
                     m_callbackConnectedToNewPeer(pr);
@@ -628,7 +628,7 @@ void TcpNodePrivate::_sendThreadJob()
 
             if(itpeer == m_peers.end())
             {
-                Lock(m_callback_access);
+                Lock lck(m_callback_access);
                 if(m_callbackSendError)
                 {
                     lck.unlock();// Unlock for callback ///////
@@ -644,7 +644,7 @@ void TcpNodePrivate::_sendThreadJob()
                 size_t bytes_sent = psocket->send(curr_out_buffer->second);
                 if(bytes_sent > 0)
                 {
-                    Lock(m_callback_access);
+                    Lock lck(m_callback_access);
                     if(m_callbackSent)
                     {
                         Peer pr = itpeer->second;
@@ -774,7 +774,7 @@ void TcpNodePrivate::setSleepTime(int ms)
 
 size_t TcpNodePrivate::receiveBufferSize()
 {
-    Lock(m_data_access);
+    Lock lck(m_data_access);
     size_t result = 0;
     if(m_listener)
     {
@@ -787,7 +787,7 @@ size_t TcpNodePrivate::receiveBufferSize()
 
 void TcpNodePrivate::setReceiveBufferSize(size_t number_of_bytes)
 {
-    Lock(m_data_access);
+    Lock lck(m_data_access);
     if(m_listener)
     {
         m_listener->setReceiveBufferSize(number_of_bytes);
@@ -825,7 +825,7 @@ ISocket* TcpNodePrivate::defaultNewSocket()
 void TcpNodePrivate::setSocketInterfaceCreateFunction(
     std::function<ISocket*()> new_socket_func)
 {
-    Lock(m_data_access);
+    Lock lck(m_data_access);
     if(new_socket_func)
     {
         m_createNewSocketFunction = new_socket_func;
@@ -837,7 +837,7 @@ void TcpNodePrivate::setListener(ISocket *ifsock)
 {
     if(ifsock)
     {
-        Lock (m_data_access);
+        Lock lck(m_data_access);
         m_listener->close();
         delete m_listener;
         m_listener = ifsock;
